@@ -11,6 +11,11 @@ export default function ProjectDetail() {
   const [error, setError] = useState<string | null>(null);
 
   const project = id ? projectDetails[id] : null;
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
+
+  useEffect(() => {
+    setSelectedVideoIndex(0);
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -49,14 +54,31 @@ export default function ProjectDetail() {
     );
   }
 
-  const getYoutubeEmbedUrl = (url: string) => {
+  const getYoutubeId = (url: string) => {
     try {
-      const videoId = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
-      return `https://www.youtube.com/embed/${videoId}`;
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+      const match = url.match(regExp);
+      return (match && match[2].length === 11) ? match[2] : null;
     } catch (e) {
-      return url;
+      return null;
     }
   };
+
+  const getYoutubeEmbedUrl = (url: string) => {
+    const videoId = getYoutubeId(url);
+    return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+  };
+
+  const getYoutubeThumbnail = (url: string) => {
+    const id = getYoutubeId(url);
+    if (!id) return null;
+    return `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
+  };
+
+  const videos = Array.isArray(project.videos) ? project.videos : [];
+  const currentVideo = videos[selectedVideoIndex];
+
+  const cn = (...classes: (string | boolean | undefined)[]) => classes.filter(Boolean).join(' ');
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-20">
@@ -100,24 +122,87 @@ export default function ProjectDetail() {
           )}
         </div>
 
-        {/* Video Section */}
-        <div className="space-y-20 mb-24">
-          {(Array.isArray(project.videos) ? project.videos : []).map((video, idx) => (
-            <div key={idx} className="space-y-6">
-              <div className="aspect-video bg-black overflow-hidden shadow-2xl">
-                <iframe
-                  src={getYoutubeEmbedUrl(video.youtubeUrl)}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-              <div className="max-w-2xl">
-                <h3 className="text-xl font-bold tracking-tight mb-2">{video.title}</h3>
-                <p className="text-sm text-black/60 leading-relaxed">{video.description}</p>
+        {/* Video Section - Playlist Style */}
+        <div className="mb-24">
+          <div className={cn("grid grid-cols-1 gap-8", videos.length > 1 ? "lg:grid-cols-3" : "lg:grid-cols-1")}>
+            {/* Main Player */}
+            <div className={cn(videos.length > 1 ? "lg:col-span-2" : "lg:col-span-1")}>
+              <div className="space-y-6">
+                <div className="aspect-video bg-black overflow-hidden shadow-2xl">
+                  {currentVideo && (
+                    <iframe
+                      key={selectedVideoIndex}
+                      src={getYoutubeEmbedUrl(currentVideo.youtubeUrl)}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  )}
+                </div>
+                {currentVideo && (
+                  <div className="max-w-2xl">
+                    <h3 className="text-xl font-bold tracking-tight mb-2">{currentVideo.title}</h3>
+                    <p className="text-sm text-black/60 leading-relaxed whitespace-pre-wrap">{currentVideo.description}</p>
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+
+            {/* Sidebar Playlist */}
+            {videos.length > 1 && (
+              <div className="lg:col-span-1">
+                <div className="bg-white border border-black/5 p-4 h-full max-h-[600px] overflow-y-auto">
+                  <h3 className="text-[10px] font-bold tracking-widest uppercase text-black/40 mb-4 px-2">
+                    Playlist ({videos.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {videos.map((video, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedVideoIndex(idx)}
+                        className={cn(
+                          "w-full flex gap-4 p-2 transition-colors text-left group",
+                          selectedVideoIndex === idx ? "bg-black/5" : "hover:bg-black/[0.02]"
+                        )}
+                      >
+                        <div className="relative w-24 h-14 bg-black/10 shrink-0 overflow-hidden">
+                          <img
+                            src={video.thumbnailUrl || getYoutubeThumbnail(video.youtubeUrl) || ""}
+                            alt={video.title}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                            referrerPolicy="no-referrer"
+                          />
+                          {selectedVideoIndex === idx && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <div className="flex items-end gap-0.5 h-4">
+                                <div className="w-1 bg-white animate-bounce" style={{ height: '60%' }} />
+                                <div className="w-1 bg-white animate-bounce" style={{ height: '100%', animationDelay: '0.2s' }} />
+                                <div className="w-1 bg-white animate-bounce" style={{ height: '40%', animationDelay: '0.4s' }} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0 py-1">
+                          <p className={cn(
+                            "text-[8px] font-bold tracking-widest uppercase mb-1",
+                            selectedVideoIndex === idx ? "text-black" : "text-black/30"
+                          )}>
+                            Video {idx + 1}
+                          </p>
+                          <h4 className={cn(
+                            "text-[11px] font-bold leading-tight line-clamp-2",
+                            selectedVideoIndex === idx ? "text-black" : "text-black/60"
+                          )}>
+                            {video.title || "Untitled Video"}
+                          </h4>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Technical Info */}
