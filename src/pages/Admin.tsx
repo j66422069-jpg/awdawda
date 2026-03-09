@@ -344,51 +344,35 @@ export default function Admin() {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log("PROJECT reorder clicked");
-    
     if (isSaving) return;
     
+    // 1. Get current projects from state (reflects UI order)
+    const validProjects = projects.filter(p => {
+      if (!p || !p.id) return false;
+      const title = (p.title || "").trim();
+      if (!title) return false;
+      if (p.id === "new" || p.id === 0) return false;
+      return true;
+    });
+    
+    // 2. Create payload with ONLY id and sort_order
+    const payload = validProjects.map((p, index) => ({
+      id: p.id,
+      sort_order: index + 1
+    }));
+    
+    // 3. Mandatory console logs
+    console.log("REORDER SAVE TRIGGERED");
+    console.log("Payload:", payload);
+    
+    if (payload.length === 0) {
+      alert("저장할 유효한 프로젝트가 없습니다.");
+      return;
+    }
+
     setIsSaving(true);
     
     try {
-      // 1. Get current projects from state (reflects UI order)
-      // 2. Strict Filter: exclude invalid/placeholder/draft items
-      const validProjects = projects.filter(p => {
-        if (!p || !p.id) return false;
-        
-        const title = (p.title || "").trim();
-        const desc = (p.description || "").trim();
-        const thumb = (p.thumbnailUrl || p.thumbnail_url || "").trim();
-        
-        // Rule: Must have a title
-        if (!title) return false;
-        
-        // Rule: Must not be entirely empty
-        if (!title && !desc && !thumb) return false;
-        
-        // Rule: Exclude placeholders, drafts, or temp items
-        if (p.isPlaceholder || p.isDraft || p.isTemp || p.id === "new" || p.id === 0) return false;
-        
-        return true;
-      });
-      
-      // 3. Create payload with ONLY id and sort_order
-      const payload = validProjects.map((p, index) => ({
-        id: p.id,
-        sort_order: index + 1
-      }));
-      
-      // 4. Mandatory console logs
-      console.log("reorder payload", payload);
-      console.log("reorder only request sent");
-      console.log("general save blocked");
-      
-      if (payload.length === 0) {
-        alert("저장할 유효한 프로젝트가 없습니다.");
-        setIsSaving(false);
-        return;
-      }
-
       const res = await fetch("/api/projects/reorder", {
         method: "POST",
         headers: getAuthHeaders(),
@@ -402,13 +386,8 @@ export default function Admin() {
         throw new Error(errorData.error || "순서 저장에 실패했습니다.");
       }
       
-      // Re-fetch projects to ensure everything is in sync
-      const projectsRes = await fetch("/api/projects");
-      if (projectsRes.ok) {
-        const updatedProjects = await projectsRes.json();
-        setProjects(updatedProjects);
-        updateProjects(updatedProjects);
-      }
+      // Update context state with current local state
+      updateProjects(projects);
       
       setHasOrderChanged(false);
       alert("전체 프로젝트 순서가 저장되었습니다.");
@@ -424,54 +403,43 @@ export default function Admin() {
     e.preventDefault();
     e.stopPropagation();
 
-    console.log("HOME reorder clicked");
-
     if (isSaving) return;
+    
+    // 1. Get featured projects
+    const featuredProjects = projects.filter(p => {
+      if (!p || !p.id) return false;
+      if (!(p.featured === 1 || p.featured === true)) return false;
+      const title = (p.title || "").trim();
+      if (!title) return false;
+      return true;
+    });
+    
+    // 2. Sort them exactly as they are displayed in the UI
+    const sortedFeatured = [...featuredProjects].sort((a, b) => {
+      const orderA = a.home_order && a.home_order > 0 ? a.home_order : 999999;
+      const orderB = b.home_order && b.home_order > 0 ? b.home_order : 999999;
+      if (orderA !== orderB) return orderA - orderB;
+      return (a.id || 0) - (b.id || 0);
+    });
+    
+    // 3. Create payload with ONLY id and home_order
+    const payload = sortedFeatured.map((p, index) => ({
+      id: p.id,
+      home_order: index + 1
+    }));
+    
+    // 4. Mandatory console logs
+    console.log("REORDER SAVE TRIGGERED");
+    console.log("Payload:", payload);
+    
+    if (payload.length === 0) {
+      alert("저장할 유효한 주요작업이 없습니다.");
+      return;
+    }
 
     setIsSaving(true);
     
     try {
-      // 1. Get featured projects that have id and title, and are not placeholders
-      const featuredProjects = projects.filter(p => {
-        if (!p || !p.id) return false;
-        if (!(p.featured === 1 || p.featured === true)) return false;
-        
-        const title = (p.title || "").trim();
-        const desc = (p.description || "").trim();
-        const thumb = (p.thumbnailUrl || p.thumbnail_url || "").trim();
-        
-        if (!title) return false;
-        if (!title && !desc && !thumb) return false;
-        if (p.isPlaceholder || p.isDraft || p.isTemp || p.id === "new" || p.id === 0) return false;
-        
-        return true;
-      });
-      
-      // 2. Sort them exactly as they are displayed in the UI
-      const sortedFeatured = [...featuredProjects].sort((a, b) => {
-        const orderA = a.home_order && a.home_order > 0 ? a.home_order : 999999;
-        const orderB = b.home_order && b.home_order > 0 ? b.home_order : 999999;
-        if (orderA !== orderB) return orderA - orderB;
-        return (a.id || 0) - (b.id || 0);
-      });
-      
-      // 3. Create payload with ONLY id and home_order
-      const payload = sortedFeatured.map((p, index) => ({
-        id: p.id,
-        home_order: index + 1
-      }));
-      
-      // 4. Mandatory console logs
-      console.log("reorder payload", payload);
-      console.log("reorder only request sent");
-      console.log("general save blocked");
-      
-      if (payload.length === 0) {
-        alert("저장할 유효한 주요작업이 없습니다.");
-        setIsSaving(false);
-        return;
-      }
-
       const res = await fetch("/api/projects/reorder-home", {
         method: "POST",
         headers: getAuthHeaders(),
@@ -485,13 +453,8 @@ export default function Admin() {
         throw new Error(errorData.error || "HOME 순서 저장에 실패했습니다.");
       }
       
-      // Re-fetch projects to ensure everything is in sync
-      const projectsRes = await fetch("/api/projects");
-      if (projectsRes.ok) {
-        const updatedProjects = await projectsRes.json();
-        setProjects(updatedProjects);
-        updateProjects(updatedProjects);
-      }
+      // Update context state with current local state
+      updateProjects(projects);
       
       setHasHomeOrderChanged(false);
       alert("HOME 주요작업 순서가 저장되었습니다.");
@@ -502,6 +465,7 @@ export default function Admin() {
       setIsSaving(false);
     }
   };
+
 
   const deleteProject = async (id: number) => {
     if (!confirm("정말 삭제하시겠습니까?") || isSaving) return;
