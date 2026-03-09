@@ -100,6 +100,48 @@ export default function Admin() {
   const [editingEquipmentId, setEditingEquipmentId] = useState<number | string | null>(null);
   const [equipmentForm, setEquipmentForm] = useState({ name: "", note: "" });
 
+  const startEditingProject = (project: any) => {
+    // 1. Define default state
+    const defaultState: ProjectData = {
+      title: "",
+      year: "",
+      type: "",
+      category: "",
+      description: "",
+      role: "",
+      summary: "",
+      featured: false,
+      sort_order: 0,
+      home_order: 0,
+      thumbnailUrl: "",
+      tech: { camera: "", lens: "", lighting: "", color: "" },
+      videos: []
+    };
+
+    // 2. Merge with actual project data safely
+    // Use the project data as base, fallback to defaults only if missing
+    const formState: ProjectData = {
+      ...defaultState,
+      ...project,
+      // Deep merge for tech and videos to ensure they are always objects/arrays
+      tech: {
+        camera: project.tech?.camera || project.tech_camera || "",
+        lens: project.tech?.lens || project.tech_lens || "",
+        lighting: project.tech?.lighting || project.tech_lighting || "",
+        color: project.tech?.color || project.tech_color || ""
+      },
+      videos: Array.isArray(project.videos) ? project.videos : []
+    };
+
+    // 3. Mandatory logs
+    console.log("editing project original", project);
+    console.log("editing form state", formState);
+    console.log("projects list state unchanged", projects);
+
+    // 4. Set state (This is a separate state from the projects list)
+    setEditingProject(formState);
+  };
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // In a real app, we'd verify this with the server, but for now we'll store it
@@ -797,11 +839,7 @@ export default function Admin() {
                     </button>
                   )}
                   <button
-                    onClick={() => setEditingProject({
-                      title: "", year: "", type: "", category: "", description: "", role: "", summary: "", featured: false, sort_order: 0, home_order: 0, thumbnailUrl: "",
-                      tech: { camera: "", lens: "", lighting: "", color: "" },
-                      videos: []
-                    })}
+                    onClick={() => startEditingProject({})}
                     className="px-6 py-3 bg-black text-white text-[10px] font-bold tracking-widest uppercase flex items-center gap-2"
                   >
                     <Plus size={14} /> ADD PROJECT
@@ -1074,7 +1112,7 @@ export default function Admin() {
                             const res = await fetch(`/api/projects?id=${p.id}`);
                             if (res.ok) {
                               const fullProject = await res.json();
-                              setEditingProject(fullProject);
+                              startEditingProject(fullProject);
                             }
                           }} 
                           className="p-2 text-black/40 hover:text-black"
