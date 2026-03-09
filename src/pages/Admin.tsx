@@ -134,8 +134,10 @@ export default function Admin() {
     };
 
     // 3. Mandatory logs
-    console.log("editing project original", project);
-    console.log("editing form state", formState);
+    console.log("edit screen opened");
+    console.log("original project", project);
+    console.log("form state initialized", formState);
+    console.log("no save request on open");
     console.log("projects list state unchanged", projects);
 
     // 4. Set state (This is a separate state from the projects list)
