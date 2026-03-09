@@ -491,8 +491,9 @@ async function startServer() {
     try {
       const orders = req.body; // Array of { id: number, sort_order: number }
       
-      console.log("reorder only called");
-      console.log("/api/projects/reorder payload", JSON.stringify(orders));
+      console.log("REORDER API PAYLOAD", orders);
+      console.log("REORDER UPDATE ONLY");
+      console.log("NO INSERT / NO UPSERT");
 
       if (!Array.isArray(orders) || orders.length === 0) {
         return res.status(400).json({ error: "Invalid orders format. Expected a non-empty array." });
@@ -531,8 +532,9 @@ async function startServer() {
     try {
       const orders = req.body; // Array of { id: number, home_order: number }
       
-      console.log("reorder home only called");
-      console.log("/api/projects/reorder-home payload", JSON.stringify(orders));
+      console.log("REORDER API PAYLOAD", orders);
+      console.log("REORDER UPDATE ONLY");
+      console.log("NO INSERT / NO UPSERT");
 
       if (!Array.isArray(orders) || orders.length === 0) {
         return res.status(400).json({ error: "Invalid orders format. Expected a non-empty array." });

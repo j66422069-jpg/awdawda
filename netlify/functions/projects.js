@@ -95,6 +95,37 @@ export const handler = async (event) => {
     }
 
     const payload = JSON.parse(body || '{}');
+    const path = event.path || '';
+    const isReorder = path.endsWith('/reorder');
+    const isReorderHome = path.endsWith('/reorder-home');
+
+    if (httpMethod === 'POST' && (isReorder || isReorderHome)) {
+      console.log("REORDER API PAYLOAD", payload);
+      console.log("REORDER UPDATE ONLY");
+      console.log("NO INSERT / NO UPSERT");
+
+      if (!Array.isArray(payload)) {
+        return { statusCode: 400, body: JSON.stringify({ error: 'Invalid payload. Expected an array.' }) };
+      }
+
+      const field = isReorder ? 'sort_order' : 'home_order';
+
+      for (const item of payload) {
+        if (!item.id) continue;
+        const updateData = { [field]: item[field] };
+        const { error } = await supabase
+          .from('projects')
+          .update(updateData)
+          .eq('id', item.id);
+        
+        if (error) {
+          console.error(`Error updating ${field} for id ${item.id}:`, error);
+          throw error;
+        }
+      }
+
+      return { statusCode: 200, body: JSON.stringify({ success: true }) };
+    }
 
     if (httpMethod === 'POST') {
       const { videos, tech, ...body } = payload;
